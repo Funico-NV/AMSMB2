@@ -171,20 +171,24 @@ public class AsyncInputStream<Seq>: InputStream, @unchecked Sendable where Seq: 
     }
 
     private func prefetchData() {
+        // corelibs-foundation marks InputStream explicitly non-Sendable, which overrides this
+        // class's own `@unchecked Sendable` on Linux and makes capturing `self` an error under
+        // Swift 6.2. The class is safe to share: every buffer access below holds `bufferLock`.
+        nonisolated(unsafe) let stream = self
         Task { @Sendable in
             do {
-                while let data = try await iterator.next() {
-                    bufferLock.withLock {
-                        if self.buffer == nil {
-                            self.buffer = Data(data)
+                while let data = try await stream.iterator.next() {
+                    stream.bufferLock.withLock {
+                        if stream.buffer == nil {
+                            stream.buffer = Data(data)
                         } else {
-                            self.buffer!.append(contentsOf: data)
+                            stream.buffer!.append(contentsOf: data)
                         }
                     }
                 }
             } catch {
-                bufferLock.withLock {
-                    _streamStatus = .error
+                stream.bufferLock.withLock {
+                    stream._streamStatus = .error
                 }
             }
         }
