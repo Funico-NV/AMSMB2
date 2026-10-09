@@ -1,6 +1,15 @@
 // swift-tools-version:5.9
 import PackageDescription
 
+// Apple platforms link AMSMB2 dynamically so App Store apps meet libsmb2's LGPL terms.
+// On Linux the product type is left to SwiftPM: a dynamic library cannot be linked with
+// `--static-swift-stdlib`, which servers use to ship a binary that needs no Swift installed.
+#if os(Linux)
+let libraryType: Product.Library.LibraryType? = nil
+#else
+let libraryType: Product.Library.LibraryType? = .dynamic
+#endif
+
 let package = Package(
     name: "AMSMB2",
     platforms: [
@@ -13,7 +22,7 @@ let package = Package(
     products: [
         .library(
             name: "AMSMB2",
-            type: .dynamic,
+            type: libraryType,
             targets: ["AMSMB2"]
         ),
     ],
